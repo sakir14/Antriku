@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "791932772209",
+    "project_id": "antriku-40d77",
+    "storage_bucket": "antriku-40d77.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:791932772209:android:58b31462fced52fcca60d0",
+        "android_client_info": {
+          "package_name": "com.example.antriku"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoiIV1IKciYtkp1qQctT6yYvmLfyWO5aE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
