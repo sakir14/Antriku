@@ -485,11 +485,20 @@ class ApiService {
   // ==========================================
   Future<Map<String, dynamic>> updateMerchantProfile(
     String name,
-    String address,
-  ) async {
+    String address, {
+    double? lat,
+    double? lng,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
+      final body = <String, dynamic>{'business_name': name, 'address': address};
+
+      if (lat != null && lng != null) {
+        body['latitude'] = lat;
+        body['longitude'] = lng;
+      }
+
       final response = await http.put(
         Uri.parse('$baseUrl/merchant/profile'),
         headers: {
@@ -497,7 +506,7 @@ class ApiService {
           'Accept': 'application/json',
           'Content-Type': 'application/json', // Wajib untuk request PUT
         },
-        body: json.encode({'business_name': name, 'address': address}),
+        body: json.encode(body),
       );
 
       return json.decode(response.body);

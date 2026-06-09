@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -191,6 +192,17 @@ class _MerchantProfileTabState extends State<MerchantProfileTab>
         _uploadedPhotoUrl != null ||
         _fullPhotoUrl != null ||
         (id != null && _photoUrlCache[id] != null);
+  }
+
+  bool get _hasStoreCoordinates {
+    final lat = double.tryParse(
+      widget.merchantProfile?['latitude']?.toString() ?? '',
+    );
+    final lng = double.tryParse(
+      widget.merchantProfile?['longitude']?.toString() ?? '',
+    );
+
+    return lat != null && lng != null;
   }
 
   Widget _buildReusableAppBar({required String title, IconData? icon}) {
@@ -461,6 +473,150 @@ class _MerchantProfileTabState extends State<MerchantProfileTab>
         context,
         title: 'Koneksi Terputus',
         message: 'Gagal menghapus foto dari server.',
+        type: ContentType.failure,
+      );
+    }
+  }
+
+  Future<Position?> _getCurrentStorePosition() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (!mounted) return null;
+
+      CustomSnackBar.show(
+        context,
+        title: 'GPS Belum Aktif',
+        message: 'Nyalakan lokasi/GPS HP, lalu coba perbarui lagi.',
+        type: ContentType.warning,
+      );
+
+      return null;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied) {
+      if (!mounted) return null;
+
+      CustomSnackBar.show(
+        context,
+        title: 'Izin Lokasi Ditolak',
+        message: 'Izinkan akses lokasi agar titik toko bisa disimpan.',
+        type: ContentType.warning,
+      );
+
+      return null;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      if (!mounted) return null;
+
+      CustomSnackBar.show(
+        context,
+        title: 'Izin Lokasi Terkunci',
+        message: 'Buka pengaturan aplikasi dan aktifkan izin lokasi AntriKu.',
+        type: ContentType.warning,
+      );
+
+      return null;
+    }
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      ).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      if (!mounted) return null;
+
+      CustomSnackBar.show(
+        context,
+        title: 'Lokasi Belum Terdeteksi',
+        message: 'Coba di area terbuka atau aktifkan mode akurasi tinggi.',
+        type: ContentType.warning,
+      );
+
+      return null;
+    }
+  }
+
+  Future<void> _updateStoreLocationAction() async {
+    final businessName = widget.merchantProfile?['business_name']?.toString();
+    final address = widget.merchantProfile?['address']?.toString();
+
+    if (businessName == null ||
+        businessName.trim().isEmpty ||
+        address == null ||
+        address.trim().isEmpty) {
+      CustomSnackBar.show(
+        context,
+        title: 'Profil Belum Lengkap',
+        message: 'Lengkapi nama dan alamat toko terlebih dahulu.',
+        type: ContentType.warning,
+      );
+
+      return;
+    }
+
+    final position = await _getCurrentStorePosition();
+    if (position == null || !mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return const Center(
+          child: CircularProgressIndicator(color: Color(0xFF059669)),
+        );
+      },
+    );
+
+    try {
+      final result = await _apiService.updateMerchantProfile(
+        businessName.trim(),
+        address.trim(),
+        lat: position.latitude,
+        lng: position.longitude,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      if (result['success'] == true) {
+        CustomSnackBar.show(
+          context,
+          title: 'Lokasi Toko Disimpan',
+          message: 'Pelanggan sekarang bisa melihat jarak toko dengan benar.',
+          type: ContentType.success,
+        );
+
+        await widget.onRefreshNeeded();
+
+        if (!mounted) return;
+
+        setState(() {
+          _cacheBuster = DateTime.now().millisecondsSinceEpoch;
+        });
+      } else {
+        CustomSnackBar.show(
+          context,
+          title: 'Gagal Menyimpan Lokasi',
+          message: result['message'] ?? 'Server belum menerima titik lokasi.',
+          type: ContentType.warning,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      CustomSnackBar.show(
+        context,
+        title: 'Koneksi Terputus',
+        message: 'Gagal mengirim lokasi toko ke server.',
         type: ContentType.failure,
       );
     }
@@ -1110,6 +1266,31 @@ class _MerchantProfileTabState extends State<MerchantProfileTab>
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _showEditProfileDialog,
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withAlpha(20),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.my_location,
+                          color: Colors.teal,
+                        ),
+                      ),
+                      title: const Text(
+                        'Perbarui Lokasi Toko',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        _hasStoreCoordinates
+                            ? 'Titik lokasi toko sudah tersimpan'
+                            : 'Lokasi toko belum tersedia',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _updateStoreLocationAction,
                     ),
                     const Divider(),
                     ListTile(
