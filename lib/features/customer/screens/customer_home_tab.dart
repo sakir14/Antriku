@@ -7,6 +7,8 @@ class CustomerHomeTab extends StatefulWidget {
   final List<dynamic> activeQueues;
   final Map<String, dynamic>? customerProfile;
   final bool isLoading;
+  final bool hasCurrentLocation;
+  final String? locationMessage;
   final Function(int) onTakeQueue;
   final Function(int) onCancelQueue;
 
@@ -17,6 +19,8 @@ class CustomerHomeTab extends StatefulWidget {
     required this.activeQueues,
     required this.customerProfile,
     required this.isLoading,
+    required this.hasCurrentLocation,
+    required this.locationMessage,
     required this.onTakeQueue,
     required this.onCancelQueue,
   });
@@ -27,6 +31,24 @@ class CustomerHomeTab extends StatefulWidget {
 
 class _CustomerHomeTabState extends State<CustomerHomeTab> {
   String _searchQuery = '';
+
+  String _formatDistance(double? distance) {
+    if (distance != null) {
+      return distance < 1
+          ? 'Jarak: ${(distance * 1000).toInt()} meter'
+          : 'Jarak: ${distance.toStringAsFixed(1)} KM';
+    }
+
+    if (widget.locationMessage != null) {
+      return widget.locationMessage!;
+    }
+
+    if (widget.hasCurrentLocation) {
+      return 'Lokasi toko belum tersedia';
+    }
+
+    return 'Menghitung jarak...';
+  }
 
   Widget _buildReusableAppBar({required String title, IconData? icon}) {
     return SliverAppBar(
@@ -200,11 +222,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    distance != null
-                        ? (distance < 1
-                              ? 'Jarak: ${(distance * 1000).toInt()} meter'
-                              : 'Jarak: ${distance.toStringAsFixed(1)} KM')
-                        : 'Menghitung jarak...',
+                    _formatDistance(distance),
                     style: TextStyle(color: Colors.grey.shade700),
                   ),
                 ],
@@ -228,8 +246,13 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                           Navigator.pop(sheetContext);
                           if (distance == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Menunggu lokasi akurat...'),
+                              SnackBar(
+                                content: Text(
+                                  widget.locationMessage ??
+                                      (widget.hasCurrentLocation
+                                          ? 'Lokasi toko belum tersedia.'
+                                          : 'Menunggu lokasi akurat...'),
+                                ),
                                 backgroundColor: Colors.orange,
                               ),
                             );
@@ -621,6 +644,40 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
 
         if (widget.promotions.isNotEmpty)
           SliverToBoxAdapter(child: _buildPromotionsSection()),
+
+        if (widget.locationMessage != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withAlpha(24),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.orange.withAlpha(90)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.location_off,
+                      color: Colors.deepOrange,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '${widget.locationMessage}. Aktifkan lokasi agar jarak toko bisa dihitung.',
+                        style: const TextStyle(
+                          color: Colors.deepOrange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
 
         SliverToBoxAdapter(
           child: Padding(

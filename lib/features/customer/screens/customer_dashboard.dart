@@ -269,6 +269,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         activeQueues: dashboard.activeQueues,
         customerProfile: dashboard.customerProfile,
         isLoading: dashboard.isLoading,
+        hasCurrentLocation: dashboard.hasCurrentLocation,
+        locationMessage: dashboard.locationMessage,
         onTakeQueue: _takeQueueAction,
         onCancelQueue: _cancelQueueAction,
       ),

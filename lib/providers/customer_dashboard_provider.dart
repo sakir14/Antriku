@@ -15,6 +15,7 @@ class CustomerDashboardProvider extends ChangeNotifier {
   List<dynamic> _promotions = [];
   Map<String, dynamic>? _customerProfile;
   Position? _currentPosition;
+  String? _locationMessage;
   bool _isLoading = true;
   bool _hasVibrated = false;
   String? _pendingTurnWarningStoreName;
@@ -24,6 +25,8 @@ class CustomerDashboardProvider extends ChangeNotifier {
   List<dynamic> get history => _history;
   List<dynamic> get promotions => _promotions;
   Map<String, dynamic>? get customerProfile => _customerProfile;
+  bool get hasCurrentLocation => _currentPosition != null;
+  String? get locationMessage => _locationMessage;
   bool get isLoading => _isLoading;
 
   Future<void> loadInitialData() async {
@@ -83,6 +86,7 @@ class CustomerDashboardProvider extends ChangeNotifier {
     _promotions = [];
     _customerProfile = null;
     _currentPosition = null;
+    _locationMessage = null;
     _isLoading = true;
     _hasVibrated = false;
     _pendingTurnWarningStoreName = null;
@@ -116,16 +120,30 @@ class CustomerDashboardProvider extends ChangeNotifier {
   }
 
   Future<void> _determinePosition() async {
+    _locationMessage = null;
+
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    if (!serviceEnabled) {
+      _currentPosition = null;
+      _locationMessage = 'GPS belum aktif';
+      return;
+    }
 
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
+      if (permission == LocationPermission.denied) {
+        _currentPosition = null;
+        _locationMessage = 'Izin lokasi belum diberikan';
+        return;
+      }
     }
 
-    if (permission == LocationPermission.deniedForever) return;
+    if (permission == LocationPermission.deniedForever) {
+      _currentPosition = null;
+      _locationMessage = 'Izin lokasi ditolak permanen';
+      return;
+    }
 
     try {
       _currentPosition = await Geolocator.getCurrentPosition(
@@ -133,7 +151,11 @@ class CustomerDashboardProvider extends ChangeNotifier {
           accuracy: LocationAccuracy.high,
         ),
       ).timeout(const Duration(seconds: 8));
+      _locationMessage = null;
     } catch (e) {
+      if (_currentPosition == null) {
+        _locationMessage = 'Lokasi belum tersedia';
+      }
       debugPrint('Lokasi dilewati karena lambat/tidak tersedia: $e');
     }
   }
