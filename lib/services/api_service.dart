@@ -5,8 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 class ApiService {
-  // PENTING: Ganti dengan IP Address WiFi laptopmu!
-  static const String baseUrl = 'http://192.168.30.11:8000/api';
+  static const String baseUrl =
+      'https://antriku-backend-production.up.railway.app/api';
   static const Duration _requestTimeout = Duration(seconds: 10);
 
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -40,8 +40,7 @@ class ApiService {
     } on SocketException {
       return {
         'success': false,
-        'message':
-            'Tidak dapat terhubung ke server. Pastikan HP dan laptop satu WiFi.',
+        'message': 'Tidak dapat terhubung ke server. Pastikan internet aktif.',
       };
     } on HttpException {
       return {'success': false, 'message': 'Koneksi ke server bermasalah.'};
@@ -50,8 +49,7 @@ class ApiService {
     } catch (e) {
       return {
         'success': false,
-        'message':
-            'Server tidak merespons. Cek alamat API dan jalankan backend.',
+        'message': 'Server tidak merespons. Coba lagi beberapa saat.',
       };
     }
   }
